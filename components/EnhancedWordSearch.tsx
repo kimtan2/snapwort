@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { Search, Book, ArrowRight, Bookmark, LoaderCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 type Language = 'en' | 'de';
 
@@ -31,12 +32,12 @@ export default function EnhancedWordSearch() {
       
       if (!response.ok) throw new Error(data.error);
       
-      setMeaning(data.meaning);
+      setMeaning(data.definition);
       
       // Save to library
       await db.words.add({
-        word: word.trim(),
-        meaning: data.meaning,
+        word: data.word,
+        meaning: data.definition,
         language,
         createdAt: new Date(),
       });
@@ -56,67 +57,97 @@ export default function EnhancedWordSearch() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-600 mb-2">SnapWort</h1>
-        <p className="text-gray-600">Look up and save word definitions instantly</p>
-      </div>
+    <div className="w-full max-w-2xl flex flex-col items-center">
+      {!meaning && !error && (
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold mb-6">
+            <span className="text-blue-600">Snap</span>
+            <span className="text-indigo-600">Wort</span>
+          </h1>
+        </div>
+      )}
       
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-        <div className="flex items-center space-x-2 mb-6">
+      <div className={cn(
+        "w-full transition-all",
+        meaning ? "max-w-2xl" : "max-w-xl"
+      )}>
+        <div className={cn(
+          "flex items-center space-x-2 mb-4",
+          meaning ? "justify-start" : "justify-center"
+        )}>
           <div
             onClick={() => setLanguage('en')}
             className={cn(
-              "flex-1 flex items-center justify-center p-3 rounded-lg cursor-pointer transition-all",
+              "flex items-center justify-center px-4 py-2 rounded-full cursor-pointer transition-all",
               language === 'en' 
-                ? "bg-blue-100 border-2 border-blue-500" 
-                : "bg-gray-50 border border-gray-200 hover:bg-gray-100"
+                ? "bg-blue-100 text-blue-700 font-medium" 
+                : "bg-gray-50 text-gray-700 hover:bg-gray-100"
             )}
           >
-            <span className={cn(
-              "font-medium",
-              language === 'en' ? "text-blue-700" : "text-gray-700"
-            )}>English</span>
+            <span>English</span>
           </div>
           
           <div
             onClick={() => setLanguage('de')}
             className={cn(
-              "flex-1 flex items-center justify-center p-3 rounded-lg cursor-pointer transition-all",
+              "flex items-center justify-center px-4 py-2 rounded-full cursor-pointer transition-all",
               language === 'de' 
-                ? "bg-blue-100 border-2 border-blue-500" 
-                : "bg-gray-50 border border-gray-200 hover:bg-gray-100"
+                ? "bg-blue-100 text-blue-700 font-medium" 
+                : "bg-gray-50 text-gray-700 hover:bg-gray-100"
             )}
           >
-            <span className={cn(
-              "font-medium",
-              language === 'de' ? "text-blue-700" : "text-gray-700"
-            )}>German</span>
+            <span>German</span>
           </div>
         </div>
 
-        <div className="relative">
-          <input
-            type="text"
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Enter a ${language === 'en' ? 'English' : 'German'} word...`}
-            className="w-full rounded-lg border border-gray-300 pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading || !word.trim()}
-            className={cn(
-              "absolute right-2 top-2 rounded-lg p-1 transition-colors",
-              loading || !word.trim()
-                ? "text-gray-400 cursor-not-allowed"
-                : "text-blue-600 hover:bg-blue-100"
-            )}
-          >
-            {loading ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <ArrowRight className="h-6 w-6" />}
-          </button>
+        <div className={cn(
+          "relative group transition-all",
+          meaning ? "" : "mx-auto"
+        )}>
+          <div className="flex items-center">
+            <div className={cn(
+              "relative w-full",
+              meaning ? "rounded-lg shadow-sm" : "rounded-full shadow-lg"
+            )}>
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <Search className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                value={word}
+                onChange={(e) => setWord(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Search a ${language === 'en' ? 'English' : 'German'} word...`}
+                className={cn(
+                  "w-full pl-12 pr-12 py-4 text-lg transition-all focus:outline-none",
+                  meaning 
+                    ? "border border-gray-200 focus:border-blue-500 rounded-lg" 
+                    : "border-0 focus:shadow-md rounded-full shadow-md hover:shadow-lg"
+                )}
+              />
+              {word.trim() && (
+                <button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className={cn(
+                    "absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition-all",
+                    loading
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-blue-600 hover:bg-blue-50"
+                  )}
+                >
+                  {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {!meaning && !error && !loading && (
+          <div className="mt-6 text-center text-sm text-gray-500">
+            <p>Look up and save word definitions instantly</p>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 border border-red-100">
@@ -130,7 +161,7 @@ export default function EnhancedWordSearch() {
         {meaning && !error && (
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg text-gray-900">{word}</h3>
+              <h3 className="font-bold text-xl text-gray-900">{word}</h3>
               {saved && (
                 <div className="flex items-center text-green-600 text-sm">
                   <Bookmark className="h-4 w-4 mr-1" />
@@ -139,8 +170,10 @@ export default function EnhancedWordSearch() {
               )}
             </div>
             
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-              <p className="text-gray-700 leading-relaxed">{meaning}</p>
+            <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
+              <div className="prose prose-lg max-w-none">
+                <ReactMarkdown>{meaning}</ReactMarkdown>
+              </div>
             </div>
             
             <div className="pt-4 text-center">
@@ -150,18 +183,6 @@ export default function EnhancedWordSearch() {
                 <ArrowRight className="h-3 w-3 ml-1" />
               </a>
             </div>
-          </div>
-        )}
-
-        {!meaning && !error && (
-          <div className="mt-8 text-center py-6">
-            <div className="mx-auto w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center">
-              <Search className="h-8 w-8 text-blue-500" />
-            </div>
-            <h3 className="text-gray-700 font-medium">Enter a word to get started</h3>
-            <p className="text-gray-500 text-sm mt-2">
-              All searched words are automatically saved to your library
-            </p>
           </div>
         )}
       </div>

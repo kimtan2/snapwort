@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpenText, Search } from 'lucide-react';
+import { BookOpenText, Search, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
@@ -43,6 +43,8 @@ export function BottomNav() {
             )} />
             <span className="text-xs font-medium">Library</span>
           </Link>
+
+         
         </div>
       </div>
     </nav>

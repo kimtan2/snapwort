@@ -12,9 +12,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const meaning = await getWordMeaning(word, language);
+    const result = await getWordMeaning(word, language);
 
-    return NextResponse.json({ meaning });
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error getting word meaning:', error);
     return NextResponse.json(

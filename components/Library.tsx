@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { db, type Word } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Book, Trash2, Search } from 'lucide-react';
+import { Book, Trash2, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
 
 export function Library() {
   const [activeTab, setActiveTab] = useState<'en' | 'de'>('en');
+  const [expandedWords, setExpandedWords] = useState<Set<number>>(new Set());
   
   const words = useLiveQuery<Word[]>(
     () => db.words
@@ -22,6 +24,18 @@ export function Library() {
     if (id) {
       await db.words.delete(id);
     }
+  };
+
+  const toggleWord = (id: number) => {
+    setExpandedWords(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   return (
@@ -83,31 +97,50 @@ export function Library() {
             {words.map((word: Word) => (
               <div
                 key={word.id}
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-soft transition-all"
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden"
               >
-                <div className="flex justify-between">
-                  <h3 className="font-semibold text-lg text-gray-900">{word.word}</h3>
-                  <span className="bg-primary-50 text-primary-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {word.language === 'en' ? 'English' : 'German'}
-                  </span>
+                <div 
+                  className="p-5 hover:bg-gray-50 transition-all cursor-pointer"
+                  onClick={() => word.id && toggleWord(word.id)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-semibold text-lg text-gray-900">{word.word}</h3>
+                     
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-xs text-gray-500">
+                        {new Date(word.createdAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                      {word.id && expandedWords.has(word.id) ? (
+                        <ChevronUp className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-700 mt-2">{word.meaning}</p>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">
-                    {new Date(word.createdAt).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </span>
-                  <button
-                    onClick={() => word.id && handleDelete(word.id)}
-                    className="text-xs flex items-center text-red-600 hover:text-red-800 font-medium"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Delete
-                  </button>
-                </div>
+                
+                {word.id && expandedWords.has(word.id) && (
+                  <div className="px-5 pb-5">
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{word.meaning}</ReactMarkdown>
+                    </div>
+                    <div className="flex justify-end mt-4 pt-4 border-t border-gray-100">
+                      <button
+                        onClick={() => word.id && handleDelete(word.id)}
+                        className="text-xs flex items-center text-red-600 hover:text-red-800 font-medium"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
