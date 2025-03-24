@@ -14,7 +14,7 @@ export async function getWordMeaning(word: string, language: 'en' | 'de') {
     : `Provide a clear and concise definition of the German word "${word}". Include its gender if it's a noun, and a brief example if relevant.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-3.5-turbo",
     messages: [
       {
         role: "system",

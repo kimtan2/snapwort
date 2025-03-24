@@ -1,8 +1,12 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
+import { BottomNav } from '@/components/BottomNav';
 
-const inter = Inter({ subsets: ['latin'] });
+const jakarta = Plus_Jakarta_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+});
 
 export const metadata: Metadata = {
   title: 'SnapWort - Word Dictionary',
@@ -15,13 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
-        <main className="min-h-screen flex flex-col pb-16">
-          <header className="bg-white border-b border-gray-200 px-4 py-4">
-            <h1 className="text-xl font-bold text-blue-600">SnapWort</h1>
+    <html lang="en" className={jakarta.variable}>
+      <body className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+        <main className="min-h-screen flex flex-col pb-20">
+          <header className="bg-white shadow-sm border-b border-blue-100 px-4 py-4 sticky top-0 z-10">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              SnapWort
+            </h1>
           </header>
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <BottomNav />
         </main>
       </body>
     </html>
