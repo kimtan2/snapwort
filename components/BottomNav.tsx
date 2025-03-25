@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpenText, Search, Cloud } from 'lucide-react';
+import { BookOpenText, Search} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {

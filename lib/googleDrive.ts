@@ -7,8 +7,62 @@ const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/r
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 const FILE_NAME = 'snapwort_library.json';
 
-let gapi: any;
-let tokenClient: any;
+// Define types for Google API objects
+interface GapiClient {
+  client: {
+    init: (config: { apiKey: string | undefined; discoveryDocs: string[] }) => Promise<void>;
+    drive: {
+      files: {
+        list: (params: {
+          q: string;
+          spaces: string;
+          fields: string;
+        }) => Promise<{
+          result: {
+            files: Array<{ id: string; name: string }>;
+          };
+        }>;
+        get: (params: { fileId: string; alt: string }) => Promise<{ body: string }>;
+      };
+    };
+  };
+  auth: {
+    getToken: () => { access_token: string };
+  };
+  load: (api: string, callback: () => void) => void;
+}
+
+interface TokenClient {
+  callback: (response: { error?: string }) => void;
+  requestAccessToken: (options: { prompt: string }) => void;
+}
+
+interface WindowGapi {
+  load: (api: string, callback: () => void) => void;
+  client: {
+    init: (config: { apiKey: string | undefined; discoveryDocs: string[] }) => Promise<void>;
+    drive: {
+      files: {
+        list: (params: {
+          q: string;
+          spaces: string;
+          fields: string;
+        }) => Promise<{
+          result: {
+            files: Array<{ id: string; name: string }>;
+          };
+        }>;
+        get: (params: { fileId: string; alt: string }) => Promise<{ body: string }>;
+      };
+    };
+  };
+  auth: {
+    getToken: () => { access_token: string };
+  };
+}
+
+let gapi: GapiClient;
+let tokenClient: TokenClient;
 
 // Initialize the Google API client library
 export const initializeGoogleApi = async (): Promise<void> => {
@@ -26,16 +80,16 @@ export const initializeGoogleApi = async (): Promise<void> => {
 
   // Load the gapi client
   await new Promise<void>((resolve) => {
-    window.gapi.load('client', resolve);
+    (window.gapi as WindowGapi).load('client', resolve);
   });
 
   // Initialize the gapi client
-  await window.gapi.client.init({
+  await (window.gapi as WindowGapi).client.init({
     apiKey: API_KEY,
     discoveryDocs: DISCOVERY_DOCS,
   });
 
-  gapi = window.gapi;
+  gapi = window.gapi as unknown as GapiClient;
   
   // Load the Google Identity Services script
   await new Promise<void>((resolve) => {
@@ -51,7 +105,7 @@ export const initializeGoogleApi = async (): Promise<void> => {
       client_id: CLIENT_ID!,
       scope: SCOPES,
       callback: '', // Will be set later
-    });
+    }) as TokenClient;
   }
 };
 
@@ -67,7 +121,7 @@ export const authenticateWithGoogle = async (): Promise<boolean> => {
     }
     
     return new Promise<boolean>((resolve) => {
-      tokenClient.callback = (response: any) => {
+      tokenClient.callback = (response: { error?: string }) => {
         if (response.error) {
           resolve(false);
         } else {
@@ -238,7 +292,17 @@ export const restoreFromGoogleDrive = async (): Promise<boolean> => {
 // Add type definitions for the global objects
 declare global {
   interface Window {
-    gapi: any;
-    google: any;
+    gapi: WindowGapi;
+    google: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string;
+            scope: string;
+            callback: string;
+          }) => unknown;
+        };
+      };
+    };
   }
 } 

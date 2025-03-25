@@ -1,6 +1,5 @@
 'use client';
 import './globals.css';
-import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { BottomNav } from '@/components/BottomNav';
 import Link from 'next/link';
@@ -34,7 +33,9 @@ export default function RootLayout({
                 <Link href="/" className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
                   SnapWort
                 </Link>
-                { pathname == '/library' && (
+                
+              </div>
+              { pathname == '/library' && (
                   <Link
                     href="/backup"
                     className="flex flex-col items-center justify-center py-3 px-4 rounded-xl transition-all text-gray-600 hover:text-primary-600 hover:bg-gray-50"
@@ -43,7 +44,6 @@ export default function RootLayout({
                     <span className="text-xs font-medium">Backup</span>
                   </Link>
                 )}
-              </div>
             </div>
           </header>
           <div className="flex-1">
