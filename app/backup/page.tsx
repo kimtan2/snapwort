@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Cloud, Download, Upload, Database, Loader, AlertCircle } from 'lucide-react';
 import { authenticateWithGoogle, backupToGoogleDrive, restoreFromGoogleDrive } from '@/lib/googleDrive';
-import { backupToFirestore, restoreFromFirestore, FirestoreResult } from '@/lib/firestore';
+import { backupToFirestore, restoreFromFirestore } from '@/lib/firestore';
 
 export default function BackupPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

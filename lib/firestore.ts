@@ -5,7 +5,11 @@ import { getLibrary, setLibrary } from './library';
 export interface FirestoreResult {
   success: boolean;
   error?: string;
-  data?: any;
+  data?: {
+    timestamp?: string;
+    itemCount?: number;
+    [key: string]: unknown;
+  };
 }
 
 export async function backupToFirestore(userName: string): Promise<FirestoreResult> {
