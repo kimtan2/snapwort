@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
-import { Search, Book, ArrowRight, Bookmark, LoaderCircle } from 'lucide-react';
+import { Search, Book, ArrowRight, Bookmark, LoaderCircle, Volume2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { speakText } from '@/lib/textToSpeech';
 
 type Language = 'en' | 'de';
 
@@ -161,7 +162,16 @@ export default function EnhancedWordSearch() {
         {meaning && !error && (
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-xl text-gray-900">{word}</h3>
+              <div className="flex items-center space-x-3">
+                <h3 className="font-bold text-xl text-gray-900">{word}</h3>
+                <button
+                  onClick={() => speakText(word, language)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  title="Listen to pronunciation"
+                >
+                  <Volume2 className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
               {saved && (
                 <div className="flex items-center text-green-600 text-sm">
                   <Bookmark className="h-4 w-4 mr-1" />

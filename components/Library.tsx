@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { db, type Word } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Book, Trash2, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Book, Trash2, Search, ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { speakText } from '@/lib/textToSpeech';
 
 export function Library() {
   const [activeTab, setActiveTab] = useState<'en' | 'de'>('en');
@@ -106,7 +107,16 @@ export function Library() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                       <h3 className="font-semibold text-lg text-gray-900">{word.word}</h3>
-                     
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          speakText(word.word, word.language);
+                        }}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                        title="Listen to pronunciation"
+                      >
+                        <Volume2 className="h-4 w-4 text-gray-500" />
+                      </button>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span className="text-xs text-gray-500">
