@@ -3,7 +3,7 @@ import { getLanguageAssistance } from '@/lib/openai';
 
 export async function POST(req: Request) {
   try {
-    const { word, language, model = 'groq' } = await req.json();
+    const { word, language } = await req.json();
 
     if (!word || !language) {
       return NextResponse.json(
@@ -12,64 +12,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Choose the model based on the model parameter
-    let useGroq = false;
-    let useMistral = false;
-    
-    switch (model.toLowerCase()) {
-      case 'groq':
-        useGroq = true;
-        break;
-      case 'mistral':
-        useMistral = true;
-        break;
-      case 'huggingface': // For backward compatibility
-        useMistral = true;
-        break;
-      case 'openai':
-      default:
-        // Default to OpenAI (both flags false)
-        break;
-    }
-
     try {
-      const result = await getLanguageAssistance(word, language, useGroq, useMistral);
+      // Always use the DEFAULT_MODEL_PROVIDER configuration from lib/openai.ts
+      const result = await getLanguageAssistance(word, language);
 
       // Pass the model information back to the client
       return NextResponse.json({
         title: result.title,
         answer: result.answer,
         suggestions: result.suggestions,
-        modelUsed: result.modelUsed || model // Fallback to requested model if modelUsed is not provided
+        modelUsed: result.modelUsed
       });
     } catch (serviceError) {
       console.error('Service error:', serviceError);
-      
-      // Try with OpenAI as a last resort
-      if (model !== 'openai') {
-        console.log('Last resort fallback to OpenAI');
-        try {
-          const fallbackResult = await getLanguageAssistance(word, language, false, false);
-          
-          return NextResponse.json({
-            title: fallbackResult.title,
-            answer: fallbackResult.answer,
-            suggestions: fallbackResult.suggestions,
-            modelUsed: 'openai (fallback)'
-          });
-        } catch (fallbackError) {
-          console.error('Even fallback to OpenAI failed:', fallbackError);
-          return NextResponse.json(
-            { error: 'All available models failed to respond. Please try again later.' },
-            { status: 500 }
-          );
-        }
-      } else {
-        return NextResponse.json(
-          { error: 'Failed to get word meaning with the selected model' },
-          { status: 500 }
-        );
-      }
+      return NextResponse.json(
+        { error: 'The language model failed to respond. Please try again later.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('Error getting word meaning:', error);

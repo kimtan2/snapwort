@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
-import { Search, Book, ArrowRight, Bookmark, LoaderCircle, Volume2, Send, ServerIcon } from 'lucide-react';
+import { Search, Book, ArrowRight, Bookmark, LoaderCircle, Volume2, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { speakText } from '@/lib/textToSpeech';
 
 type Language = 'en' | 'de';
-type Model = 'openai' | 'groq' | 'mistral';
 
 interface LanguageResult {
   title: string;
@@ -24,7 +23,6 @@ interface FollowUpMessage {
 export default function EnhancedWordSearch() {
   const [query, setQuery] = useState('');
   const [language, setLanguage] = useState<Language>('en');
-  const [model, setModel] = useState<Model>('groq');
   const [result, setResult] = useState<LanguageResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +31,6 @@ export default function EnhancedWordSearch() {
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [wordId, setWordId] = useState<number | undefined>(undefined);
-  const [showModelSelector, setShowModelSelector] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -52,8 +49,7 @@ export default function EnhancedWordSearch() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           word: query.trim(), 
-          language,
-          model
+          language
         }),
       });
 
@@ -126,8 +122,7 @@ export default function EnhancedWordSearch() {
         body: JSON.stringify({
           question: followUpQuestion,
           language,
-          previousContext,
-          model
+          previousContext
         }),
       });
 
@@ -163,15 +158,6 @@ export default function EnhancedWordSearch() {
     } finally {
       setFollowUpLoading(false);
     }
-  };
-
-  const toggleModelSelector = () => {
-    setShowModelSelector(!showModelSelector);
-  };
-
-  const selectModel = (newModel: Model) => {
-    setModel(newModel);
-    setShowModelSelector(false);
   };
 
   const hasResult = result || error;
@@ -217,52 +203,6 @@ export default function EnhancedWordSearch() {
             )}
           >
             <span>German</span>
-          </div>
-
-          <div className="relative ml-auto">
-            <button
-              onClick={toggleModelSelector}
-              className={cn(
-                "flex items-center justify-center px-4 py-2 rounded-full cursor-pointer transition-all",
-                "bg-gray-50 hover:bg-gray-100 text-gray-700"
-              )}
-            >
-              <span className="text-sm">{model === 'openai' ? 'OpenAI' : model === 'groq' ? 'Groq' : 'Mistral'}</span>
-            </button>
-            
-            {showModelSelector && (
-              <div className="absolute top-full right-0 mt-1 bg-white shadow-lg rounded-lg border border-gray-200 z-10">
-                <div className="p-2 w-40">
-                  <button
-                    onClick={() => selectModel('openai')}
-                    className={cn(
-                      "w-full text-left px-3 py-2 rounded text-sm transition-colors",
-                      model === 'openai' ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
-                    )}
-                  >
-                    OpenAI
-                  </button>
-                  <button
-                    onClick={() => selectModel('groq')}
-                    className={cn(
-                      "w-full text-left px-3 py-2 rounded text-sm transition-colors",
-                      model === 'groq' ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
-                    )}
-                  >
-                    Groq
-                  </button>
-                  <button
-                    onClick={() => selectModel('mistral')}
-                    className={cn(
-                      "w-full text-left px-3 py-2 rounded text-sm transition-colors",
-                      model === 'mistral' ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
-                    )}
-                  >
-                    Mistral
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -358,14 +298,14 @@ export default function EnhancedWordSearch() {
               <div className="prose prose-lg max-w-none">
                 <ReactMarkdown>{result.answer}</ReactMarkdown>
               </div>
-              <div className="mt-3 text-xs text-right text-gray-500">
-                Answered by {result.modelUsed ? 
-                  (result.modelUsed === 'openai' ? 'OpenAI' : 
-                   result.modelUsed === 'groq' ? 'Groq' : 'Mistral') : 
-                  (model === 'openai' ? 'OpenAI' : 
-                   model === 'groq' ? 'Groq' : 'Mistral')
-                }
-              </div>
+              {result.modelUsed && (
+                <div className="mt-3 text-xs text-right text-gray-500">
+                  Answered by {result.modelUsed === 'openai' ? 'OpenAI' : 
+                              result.modelUsed === 'groq' ? 'Groq' : 
+                              result.modelUsed === 'mistral-agent' ? 'Mistral Agent' : 
+                              result.modelUsed}
+                </div>
+              )}
             </div>
             
             {followUpMessages.map((message, index) => (
@@ -377,14 +317,14 @@ export default function EnhancedWordSearch() {
                   <div className="prose prose-lg max-w-none">
                     <ReactMarkdown>{message.answer}</ReactMarkdown>
                   </div>
-                  <div className="mt-3 text-xs text-right text-gray-500">
-                    Answered by {message.modelUsed ? 
-                      (message.modelUsed === 'openai' ? 'OpenAI' : 
-                       message.modelUsed === 'groq' ? 'Groq' : 'Mistral') : 
-                      (model === 'openai' ? 'OpenAI' : 
-                       model === 'groq' ? 'Groq' : 'Mistral')
-                    }
-                  </div>
+                  {message.modelUsed && (
+                    <div className="mt-3 text-xs text-right text-gray-500">
+                      Answered by {message.modelUsed === 'openai' ? 'OpenAI' : 
+                                 message.modelUsed === 'groq' ? 'Groq' : 
+                                 message.modelUsed === 'mistral-agent' ? 'Mistral Agent' : 
+                                 message.modelUsed}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
