@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpenText, Search} from 'lucide-react';
+import { BookOpenText, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
@@ -15,7 +15,7 @@ export function BottomNav() {
           <Link
             href="/"
             className={cn(
-              'flex flex-col items-center justify-center py-3 px-4 rounded-xl transition-all',
+              'flex flex-col items-center justify-center py-3 px-6 rounded-xl transition-all',
               pathname === '/' 
                 ? 'bg-primary-50 text-primary-700' 
                 : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
@@ -31,7 +31,7 @@ export function BottomNav() {
           <Link
             href="/library"
             className={cn(
-              'flex flex-col items-center justify-center py-3 px-4 rounded-xl transition-all',
+              'flex flex-col items-center justify-center py-3 px-6 rounded-xl transition-all',
               pathname === '/library' 
                 ? 'bg-primary-50 text-primary-700' 
                 : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
@@ -43,8 +43,6 @@ export function BottomNav() {
             )} />
             <span className="text-xs font-medium">Library</span>
           </Link>
-
-         
         </div>
       </div>
     </nav>

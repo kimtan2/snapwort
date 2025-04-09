@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getLanguageAssistance } from '@/lib/openai';
+import { getFollowUp } from '@/lib/openai';
 
 export async function POST(req: Request) {
   try {
-    const { word, language, model = 'groq' } = await req.json();
+    const { question, language, previousContext, model = 'groq' } = await req.json();
 
-    if (!word || !language) {
+    if (!question || !language) {
       return NextResponse.json(
-        { error: 'Word and language are required' },
+        { error: 'Question and language are required' },
         { status: 400 }
       );
     }
@@ -33,14 +33,11 @@ export async function POST(req: Request) {
     }
 
     try {
-      const result = await getLanguageAssistance(word, language, useGroq, useMistral);
+      const result = await getFollowUp(question, language, previousContext, useGroq, useMistral);
 
-      // Pass the model information back to the client
-      return NextResponse.json({
-        title: result.title,
+      return NextResponse.json({ 
         answer: result.answer,
-        suggestions: result.suggestions,
-        modelUsed: result.modelUsed || model // Fallback to requested model if modelUsed is not provided
+        modelUsed: result.modelUsed
       });
     } catch (serviceError) {
       console.error('Service error:', serviceError);
@@ -49,12 +46,10 @@ export async function POST(req: Request) {
       if (model !== 'openai') {
         console.log('Last resort fallback to OpenAI');
         try {
-          const fallbackResult = await getLanguageAssistance(word, language, false, false);
+          const fallbackResult = await getFollowUp(question, language, previousContext, false, false);
           
           return NextResponse.json({
-            title: fallbackResult.title,
             answer: fallbackResult.answer,
-            suggestions: fallbackResult.suggestions,
             modelUsed: 'openai (fallback)'
           });
         } catch (fallbackError) {
@@ -66,16 +61,16 @@ export async function POST(req: Request) {
         }
       } else {
         return NextResponse.json(
-          { error: 'Failed to get word meaning with the selected model' },
+          { error: 'Failed to get an answer with the selected model' },
           { status: 500 }
         );
       }
     }
   } catch (error) {
-    console.error('Error getting word meaning:', error);
+    console.error('Error processing follow-up question:', error);
     return NextResponse.json(
       { error: 'Failed to process your request' },
       { status: 500 }
     );
   }
-}
+} 
