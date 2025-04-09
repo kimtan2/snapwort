@@ -28,7 +28,7 @@ async function testMistral() {
     console.log('Prompt:', userPrompt);
     
     const response = await mistral.chat.complete({
-      model: "mistral-small-latest",
+      model: "ag:7fe871ed:20250409:snapwort:7c2cd028",
       messages: [
         {
           role: "system",
@@ -74,7 +74,7 @@ async function testMistralDirectAPI() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "mistral-small-latest",
+        model: "ag:7fe871ed:20250409:snapwort:7c2cd028",
         messages: [
           {
             role: "system",

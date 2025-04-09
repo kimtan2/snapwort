@@ -39,6 +39,43 @@ try {
 const MISTRAL_MODEL = "mistral-small-2501"; // Primary model - mistral-small-latest is the same as mistral-small-3.1
 const FALLBACK_MISTRAL_MODEL = "open-mistral-7b"; // Fallback model
 
+// Mistral Agent ID
+const MISTRAL_AGENT_ID = "ag:7fe871ed:20250409:snapwort:7c2cd028"; // User's custom Mistral agent
+
+// Function to use Mistral agent instead of a model
+async function useMistralAgent(messages: Array<{role: string, content: string}>, options: {temperature?: number, maxTokens?: number} = {}) {
+  console.log('Using Mistral Agent with ID:', MISTRAL_AGENT_ID);
+  
+  try {
+    const response = await mistral.agents.chat({
+      agentId: MISTRAL_AGENT_ID,
+      messages: messages,
+      temperature: options.temperature || 0.7,
+      maxTokens: options.maxTokens || 800
+    });
+    
+    console.log('Mistral agent response received successfully');
+    
+    let content = '';
+    if (response.choices && response.choices[0]?.message?.content) {
+      const messageContent = response.choices[0].message.content;
+      if (typeof messageContent === 'string') {
+        content = messageContent;
+        console.log('Raw response preview:', messageContent.substring(0, 100) + '...');
+      } else {
+        // For ContentChunk[] type
+        console.log('Received structured content instead of string');
+        content = JSON.stringify(messageContent);
+      }
+    }
+    
+    return content || "I couldn't generate a response. Please try again.";
+  } catch (error) {
+    console.error('Error with Mistral agent:', error);
+    throw error;
+  }
+}
+
 export async function getFollowUp(
   question: string, 
   language: 'en' | 'de', 
