@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { Groq } from 'groq-sdk';
 import { Mistral } from '@mistralai/mistralai';
+import type { ChatCompletionMessageParam } from 'openai/resources';
 
 // Manual model selection configuration
 // Options: 'mistral-agent' (default), 'openai', 'groq'
@@ -40,7 +41,8 @@ try {
 }
 
 // Model for Mistral
-const MISTRAL_MODEL = "a"; // Primary model - mistral-small-latest is the same as mistral-small-3.1
+const MISTRAL_MODEL = "mistral-small-2501"; // Primary model - mistral-small-latest is the same as mistral-small-3.1
+const FALLBACK_MISTRAL_MODEL = "open-mistral-7b"; // Fallback model
 
 // Mistral Agent ID
 const MISTRAL_AGENT_ID = "ag:7fe871ed:20250409:snapwort:7c2cd028"; // User's custom Mistral agent
@@ -49,25 +51,22 @@ console.log('Configured Mistral Agent ID:', MISTRAL_AGENT_ID);
 // Determine if we should use a specific model
 const shouldUseMistralAgent = () => DEFAULT_MODEL_PROVIDER === 'mistral-agent';
 const shouldUseGroq = () => DEFAULT_MODEL_PROVIDER === 'groq';
+const shouldUseOpenAI = () => DEFAULT_MODEL_PROVIDER === 'openai';
 
-// Define message types to avoid using any
-type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
-
-// Function to use Mistral agent instead of a model - renamed from useMistralAgent to callMistralAgent
-async function callMistralAgent(
-  messages: Array<ChatMessage>, 
+// Function to use Mistral agent instead of a model
+async function useMistralAgent(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>, 
   options: { temperature?: number; maxTokens?: number } = {}
 ) {
   console.log('Using Mistral Agent with ID:', MISTRAL_AGENT_ID);
   
   try {
-    // Use the agents.complete method - note that it doesn't support temperature or maxTokens
-    const response = await mistral.agents.complete({
-      agentId: MISTRAL_AGENT_ID,
-      messages: messages
+    // Use the regular chat.complete endpoint with the agent ID as the model
+    const response = await mistral.chat.complete({
+      model: MISTRAL_AGENT_ID,
+      messages: messages as any, // Type assertion to bypass incompatible types
+      temperature: options.temperature || 0.7,
+      maxTokens: options.maxTokens || 800
     });
     
     let content = '';
@@ -75,10 +74,7 @@ async function callMistralAgent(
       const messageContent = response.choices[0].message.content;
       if (typeof messageContent === 'string') {
         content = messageContent;
-        console.log('Raw response preview:', content.substring(0, 100) + '...');
       } else {
-        // For ContentChunk[] type
-        console.log('Received structured content instead of string');
         content = JSON.stringify(messageContent);
       }
     }
@@ -86,32 +82,7 @@ async function callMistralAgent(
     return content || "I couldn't generate a response. Please try again.";
   } catch (error) {
     console.error('Error with Mistral agent:', error);
-    
-    // Fall back to using a regular model
-    try {
-      console.log('Falling back to regular Mistral model:', MISTRAL_MODEL);
-      const fallbackResponse = await mistral.chat.complete({
-        model: MISTRAL_MODEL,
-        messages: messages,
-        temperature: options.temperature || 0.7,
-        maxTokens: options.maxTokens || 800
-      });
-      
-      let fallbackContent = '';
-      if (fallbackResponse.choices && fallbackResponse.choices[0]?.message?.content) {
-        const messageContent = fallbackResponse.choices[0].message.content;
-        if (typeof messageContent === 'string') {
-          fallbackContent = messageContent;
-        } else {
-          fallbackContent = JSON.stringify(messageContent);
-        }
-      }
-      
-      return fallbackContent || "I couldn't generate a response with the fallback model. Please try again.";
-    } catch (fallbackError) {
-      console.error('Error with fallback Mistral model:', fallbackError);
-      throw error; // Throw the original error
-    }
+    throw error;
   }
 }
 
@@ -120,8 +91,13 @@ export async function getFollowUp(
   language: 'en' | 'de', 
   previousContext?: { question: string; answer: string }[]
 ) {
+  type Message = {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  };
+
   // Build the conversation history
-  const messages: ChatMessage[] = [
+  const messages: Message[] = [
     {
       role: 'system',
       content: `You are a helpful language tutor specializing in ${language === 'en' ? 'English' : 'German'} language. 
@@ -152,7 +128,7 @@ export async function getFollowUp(
   try {
     if (shouldUseMistralAgent()) {
       try {
-        const content = await callMistralAgent(messages, { temperature: 0.7, maxTokens: 800 });
+        const content = await useMistralAgent(messages, { temperature: 0.7, maxTokens: 800 });
         return {
           answer: content,
           modelUsed: 'mistral-agent'
@@ -169,7 +145,7 @@ export async function getFollowUp(
                    
     if (useGroq) {
       try {
-        // Create properly typed messages for GROQ
+        // Manually reconstruct messages for GROQ to avoid type issues
         const groqMessages = messages.map(msg => ({
           role: msg.role,
           content: msg.content
@@ -177,7 +153,7 @@ export async function getFollowUp(
         
         const response = await groq.chat.completions.create({
           model: "meta-llama/llama-4-scout-17b-16e-instruct",
-          messages: groqMessages,
+          messages: groqMessages as any, // Type assertion to bypass incompatible types
           temperature: 0.7,
           max_tokens: 800
         });
@@ -226,16 +202,35 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
     language === 'en' ? 
     `Analyze this language query: "${query}" in English.
 
+    As a language learning assistant, carefully analyze the user's request: If they ask for definitions: provide the part of speech, list meanings of that word/expression/idiom/collocation. ALWAYS provide examples to illustrate their usage based on the meaning. Also say, in which context the word usually is used. 
+    Users may also ask any other question (of course it is related to language learning, and specifically to the language the user learns: English).
+    Or the user may ask questions like: how to say x in English -> in this case help them how to say that in the targeted language.
 
+    Formatting: use markdown
+
+    Please be precise, keep your response not so long!. Do not show your thoughts, inner reasoning chain etc. Just response. Simple task! Be like language teacher: directly response to the user itself! Also do not end your response with a question!
     ` : 
     language === 'de' ? 
     `Analysiere diese Sprachanfrage: "${query}" auf Deutsch.
 
+    Als Sprachlernassistent analysiere sorgfältig die Anfrage des Benutzers: Wenn nach Definitionen gefragt wird: gib die Wortart an, liste die Bedeutungen dieses Wortes/Ausdrucks/Redewendung/Kollokation auf. Gib IMMER Beispiele, um deren Verwendung basierend auf der Bedeutung zu veranschaulichen. Sage auch, in welchem Kontext das Wort üblicherweise verwendet wird.
+    Benutzer können auch andere Fragen stellen (natürlich bezieht es sich auf Sprachenlernen und speziell auf die Sprache, die der Benutzer lernt: Deutsch).
+    Oder der Benutzer fragt vielleicht: wie sagt man x auf Deutsch -> in diesem Fall hilf ihm, wie man das in der Zielsprache sagt.
+
+    Formatierung: verwende Markdown
+
+    Bitte sei präzise, halte deine Antwort nicht zu lang! Zeige keine Gedanken, innere Argumentationskette usw. Nur die Antwort. Einfache Aufgabe! Sei wie ein Sprachlehrer: antworte direkt dem Benutzer selbst! Beende deine Antwort auch nicht mit einer Frage!
     ` :
     // Default for any other language that might be added in the future
     `Analyze this language query: "${query}" in the target language.
 
+    As a language learning assistant, carefully analyze the user's request: If they ask for definitions: provide the part of speech, list meanings of that word/expression/idiom/collocation. ALWAYS provide examples to illustrate their usage based on the meaning. Also say, in which context the word usually is used. 
+    Users may also ask any other question (of course it is related to language learning, and specifically to the language the user learns).
+    Or the user may ask questions like: how to say x in the target language -> in this case help them how to say that in the targeted language.
 
+    Formatting: use markdown
+
+    Please be precise, keep your response not so long!. Do not show your thoughts, inner reasoning chain etc. Just response. Simple task! Be like language teacher: directly response to the user itself! Also do not end your response with a question!
     `;
 
   let answer = '';
@@ -243,13 +238,13 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
   const systemPrompt = "You are a precise language assistant that can distinguish between definition requests and specific questions. For definitions, you provide clear, structured information. For specific questions, you DIRECTLY address the exact question asked, not just provide general information about the term. If asked in German response in German, if asked in English response in English.";
   
   // Messages for the answer request
-  const answerMessages: ChatMessage[] = [
+  const answerMessages = [
     {
-      role: "system",
+      role: "system" as const,
       content: systemPrompt
     },
     {
-      role: "user",
+      role: "user" as const,
       content: answerPrompt
     }
   ];
@@ -258,9 +253,9 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
     if (shouldUseMistralAgent()) {
       try {
         console.log('Attempting to use Mistral Agent for language assistance...');
-        answer = await callMistralAgent(answerMessages, { temperature: 0.5, maxTokens: 600 });
+        answer = await useMistralAgent(answerMessages, { temperature: 0.5, maxTokens: 600 });
         console.log('Mistral Agent response received successfully:', answer.substring(0, 50) + '...');
-        modelUsed = 'mistral-agent!!!!';
+        modelUsed = 'mistral-agent';
       } catch (error) {
         console.error('Mistral Agent Error for language assistance:', error);
         if (error instanceof Error) {
@@ -277,7 +272,7 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
                               
     if (useGroq) {
       try {
-        // Create properly typed messages for GROQ
+        // Manually reconstruct messages for GROQ to avoid type issues
         const groqMessages = answerMessages.map(msg => ({
           role: msg.role,
           content: msg.content
@@ -285,7 +280,7 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
         
         const answerResponse = await groq.chat.completions.create({
           model: "meta-llama/llama-4-scout-17b-16e-instruct",
-          messages: groqMessages,
+          messages: groqMessages as any, // Type assertion to bypass incompatible types
           temperature: 0.5,
           max_tokens: 600
         });
@@ -333,13 +328,13 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
   let suggestions: string[] = [];
 
   // Messages for meta information
-  const metaMessages: ChatMessage[] = [
+  const metaMessages = [
     {
-      role: "system",
+      role: "system" as const,
       content: "You extract the key information from language queries and generate helpful follow-up questions for language learners. Respond using valid JSON format only."
     },
     {
-      role: "user",
+      role: "user" as const,
       content: metaPrompt
     }
   ];
@@ -348,7 +343,7 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
     if (shouldUseMistralAgent()) {
       try {
         console.log('Attempting to use Mistral Agent for meta information...');
-        const metaContent = await callMistralAgent(metaMessages, { temperature: 0.4, maxTokens: 350 });
+        const metaContent = await useMistralAgent(metaMessages, { temperature: 0.4, maxTokens: 350 });
         console.log('Mistral agent meta response received:', metaContent.substring(0, 50) + '...');
         try {
           const metaData = JSON.parse(metaContent);
@@ -370,7 +365,7 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
       }
     } else if (shouldUseGroq()) {
       try {
-        // Create properly typed messages for GROQ
+        // Manually reconstruct messages for GROQ
         const groqMessages = metaMessages.map(msg => ({
           role: msg.role,
           content: msg.content
@@ -378,7 +373,7 @@ export async function getLanguageAssistance(query: string, language: 'en' | 'de'
         
         const metaResponse = await groq.chat.completions.create({
           model: "meta-llama/llama-4-scout-17b-16e-instruct",
-          messages: groqMessages,
+          messages: groqMessages as any, // Type assertion to bypass incompatible types
           temperature: 0.4,
           max_tokens: 350,
           response_format: { type: "json_object" }

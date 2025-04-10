@@ -162,6 +162,94 @@ export default function EnhancedWordSearch() {
 
   const hasResult = result || error;
 
+  // Enhanced Loading Animation component with gradient card and bubbles
+  const LoadingAnimation = () => {
+    // Generate random bubbles
+    const bubbles = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      size: Math.random() * 14 + 4,
+      left: Math.random() * 100,
+      delay: Math.random() * 3,
+      duration: Math.random() * 8 + 6,
+      opacity: Math.random() * 0.5 + 0.1
+    }));
+
+    return (
+      <div className="my-6 overflow-hidden">
+        <div className="relative w-full h-64 flex items-center justify-center">
+          {/* Background with bubbles */}
+          <div className="absolute inset-0 overflow-hidden z-0">
+            {bubbles.map(bubble => (
+              <div 
+                key={bubble.id}
+                className="absolute rounded-full"
+                style={{
+                  width: `${bubble.size}px`,
+                  height: `${bubble.size}px`,
+                  left: `${bubble.left}%`,
+                  bottom: `-${bubble.size}px`,
+                  opacity: bubble.opacity,
+                  background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(173, 216, 230, 0.4))',
+                  boxShadow: '0 0 8px rgba(255, 255, 255, 0.5)',
+                  animation: `bubbleRise ${bubble.duration}s ease-in ${bubble.delay}s infinite`
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Beautiful gradient card that swings vertically */}
+          <div 
+            className="relative w-[65%] h-[70%] rounded-xl shadow-lg z-10 overflow-hidden"
+            style={{
+              animation: 'cardSwing 3s ease-in-out infinite',
+              perspective: '1000px',
+              transformStyle: 'preserve-3d'
+            }}
+          >
+            {/* Gradient background for card */}
+            <div className="absolute inset-0" 
+                 style={{
+                   background: 'linear-gradient(135deg, #9333ea, #4f46e5, #818cf8, #8b5cf6, #c026d3)',
+                   animation: 'gradientShift 8s ease infinite'
+                 }}>
+            </div>
+            
+            {/* Shimmering overlay */}
+            <div className="absolute inset-0"
+                 style={{
+                   background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 70%)',
+                   animation: 'shimmerMove 3s ease-in-out infinite'
+                 }}>
+            </div>
+            
+            {/* Card content */}
+            <div className="absolute inset-0 flex flex-col justify-center p-6">
+              {/* Animated lines */}
+              <div className="h-4 w-[70%] bg-white bg-opacity-20 rounded-full mb-4" 
+                   style={{ animation: 'pulseLine 1.5s ease-in-out infinite' }}></div>
+              <div className="h-4 w-[85%] bg-white bg-opacity-20 rounded-full mb-4" 
+                   style={{ animation: 'pulseLine 1.5s ease-in-out 0.2s infinite' }}></div>
+              <div className="h-4 w-[60%] bg-white bg-opacity-20 rounded-full mb-4" 
+                   style={{ animation: 'pulseLine 1.5s ease-in-out 0.4s infinite' }}></div>
+              <div className="h-4 w-[75%] bg-white bg-opacity-20 rounded-full" 
+                   style={{ animation: 'pulseLine 1.5s ease-in-out 0.6s infinite' }}></div>
+              
+              {/* Glowing dot */}
+              <div className="absolute w-5 h-5 rounded-full bg-white bg-opacity-80 top-5 right-5"
+                   style={{ animation: 'glowPulse 2s ease-in-out infinite' }}></div>
+            </div>
+          </div>
+          
+          {/* Loading text */}
+          <div className="absolute bottom-4 text-center text-sm font-medium"
+               style={{ color: '#8b5cf6', animation: 'textFade 2s ease-in-out infinite' }}>
+            Analyzing knowledge...
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-2xl flex flex-col items-center">
       {!hasResult && (
@@ -264,6 +352,8 @@ export default function EnhancedWordSearch() {
           </div>
         )}
 
+        {loading && !hasResult && <LoadingAnimation />}
+
         {error && (
           <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 border border-red-100">
             <p className="flex items-center">
@@ -313,21 +403,29 @@ export default function EnhancedWordSearch() {
                 <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
                   <p className="text-gray-700 font-medium">{message.question}</p>
                 </div>
-                <div className="bg-green-50 rounded-xl p-6 border border-green-100">
-                  <div className="prose prose-lg max-w-none">
-                    <ReactMarkdown>{message.answer}</ReactMarkdown>
-                  </div>
-                  {message.modelUsed && (
-                    <div className="mt-3 text-xs text-right text-gray-500">
-                      Answered by {message.modelUsed === 'openai' ? 'OpenAI' : 
-                                 message.modelUsed === 'groq' ? 'Groq' : 
-                                 message.modelUsed === 'mistral-agent' ? 'Mistral Agent' : 
-                                 message.modelUsed}
+                {followUpLoading && index === followUpMessages.length - 1 ? (
+                  <LoadingAnimation />
+                ) : (
+                  <div className="bg-green-50 rounded-xl p-6 border border-green-100">
+                    <div className="prose prose-lg max-w-none">
+                      <ReactMarkdown>{message.answer}</ReactMarkdown>
                     </div>
-                  )}
-                </div>
+                    {message.modelUsed && (
+                      <div className="mt-3 text-xs text-right text-gray-500">
+                        Answered by {message.modelUsed === 'openai' ? 'OpenAI' : 
+                                   message.modelUsed === 'groq' ? 'Groq' : 
+                                   message.modelUsed === 'mistral-agent' ? 'Mistral Agent' : 
+                                   message.modelUsed}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
+            
+            {followUpLoading && followUpMessages.length === 0 && (
+              <LoadingAnimation />
+            )}
             
             <div className="relative">
               <input
@@ -378,6 +476,52 @@ export default function EnhancedWordSearch() {
           </div>
         )}
       </div>
+    
+      {/* Add keyframes for animations */}
+      <style jsx global>{`
+        @keyframes cardSwing {
+          0% { transform: perspective(1000px) rotateX(3deg); }
+          50% { transform: perspective(1000px) rotateX(-3deg); }
+          100% { transform: perspective(1000px) rotateX(3deg); }
+        }
+        
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes shimmerMove {
+          0% { transform: translateY(-50%) scale(1.5); opacity: 0.6; }
+          50% { transform: translateY(0%) scale(1); opacity: 0.2; }
+          100% { transform: translateY(50%) scale(1.5); opacity: 0.6; }
+        }
+        
+        @keyframes pulseLine {
+          0% { opacity: 0.3; transform: scaleX(0.97); }
+          50% { opacity: 0.7; transform: scaleX(1); }
+          100% { opacity: 0.3; transform: scaleX(0.97); }
+        }
+        
+        @keyframes bubbleRise {
+          0% { transform: translateY(0); opacity: 0; }
+          20% { opacity: var(--bubble-opacity, 0.3); }
+          80% { opacity: var(--bubble-opacity, 0.3); }
+          100% { transform: translateY(-600px); opacity: 0; }
+        }
+        
+        @keyframes glowPulse {
+          0% { box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.6); }
+          50% { box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.8); }
+          100% { box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.6); }
+        }
+        
+        @keyframes textFade {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
+        }
+      `}</style>
     </div>
   );
 }
